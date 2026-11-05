@@ -2,6 +2,8 @@
 
 Ten fictional, interactive websites for studying usability through exploration. The websites deliberately mix good, poor, and context-dependent design decisions. There are no observation forms, audit panels, hints, scores, or feedback reports. Share your observations in chat when you want to discuss them.
 
+`AGENTS.md` guides the agent's tutoring: review your findings, correct reasoning, and offer gradual hints for undiscovered points without revealing the full correction paper unless you ask.
+
 Start a local server from this folder:
 
 ```powershell

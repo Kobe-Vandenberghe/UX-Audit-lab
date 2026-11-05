@@ -1,0 +1,50 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const root = path.resolve(__dirname,'..');
+const base = 'http://127.0.0.1:8000/';
+(async () => {
+ const browser = await chromium.launch({channel:'chrome',headless:true});
+ const context = await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+ const page = await context.newPage();
+ const errors=[],external=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(!r.url().startsWith(base))external.push(r.url());});
+ const click = async a => {
+  const inModal = page.locator(`#modal[open] [data-action="${a}"]`);
+  await (await inModal.count() ? inModal.first() : page.locator(`[data-action="${a}"]`).first()).click();
+ };
+ const open = slug => page.goto(base+'scenarios/'+slug+'.html');
+ const text = s => page.locator(s).innerText();
+ const waitText = (s,value) => page.waitForFunction(([s,v])=>document.querySelector(s)?.textContent.includes(v),[s,value]);
+ const noOverflow = async label => assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' overflows');
+ await page.goto(base);
+ assert.equal(await page.locator('.scenario-card').count(),10);
+ const links = await page.locator('.scenario-card').evaluateAll(a=>a.map(x=>x.getAttribute('href')));
+ await fs.mkdir(path.join(root,'tests','screenshots'),{recursive:true});
+ for(const link of links){const r=await page.goto(base+link);assert.equal(r.status(),200);assert(await page.locator('h1').count()>0);await noOverflow(link);await page.screenshot({path:path.join(root,'tests/screenshots/'+path.basename(link,'.html')+'-desktop.png'),fullPage:true});assert.equal(await page.getByRole('button',{name:/audit|observation|hint/i}).count(),0);}
+ await fs.mkdir(path.join(root,'tests','screenshots'),{recursive:true});
+ await page.goto(base);await page.screenshot({path:path.join(root,'tests/screenshots/collection-desktop.png'),fullPage:true});
+ await open('01-webshop');await click('category:Headphones');assert.equal(await page.locator('.product').count(),2);await click('detail:0');await click('add:0');assert.equal(await text('#cart-count'),'1');await click('cart');await click('checkout');
+ assert.equal(await page.locator('#checkout-form input').count(),20);
+ await page.locator('[name=first]').fill('Demo');await page.locator('[name=email]').fill('invalid');await page.locator('#checkout-form button[type=submit]').click();await waitText('#order-error','E-104');assert.equal(await page.locator('[name=first]').inputValue(),'');
+ for(const [n,v] of Object.entries({first:'Demo',email:'demo@example.test',street:'Fictional Street',card:'0000 0000 0000 0000'}))await page.locator(`[name=${n}]`).fill(v);
+ await page.locator('#checkout-form button[type=submit]').click();await waitText('#store','confirmed');assert((await text('#store')).includes('€143.95'));
+ await open('02-banking');await click('transfer');await page.locator('[name=amount]').fill('20');await page.locator('#transfer-form button[type=submit]').click();assert((await text('#modal')).includes('€20.00'));await click('close');assert((await text('.balance')).includes('3,822.65'));await click('savings');assert((await text('#bank')).includes('Travel fund'));
+ await open('03-project-manager');assert.equal(await page.locator('tbody tr').count(),40);await click('open:104');await page.locator('#task-status').selectOption('todo');await click('save:104');await click('open:107');await click('delete:107');assert.equal(await page.locator('tbody tr').count(),39);await click('undo');assert.equal(await page.locator('tbody tr').count(),40);await click('lookup');await page.locator('[name=id]').fill('TF-107');await page.locator('#lookup button').click();assert((await text('#modal')).includes('Archive old launch notes'));
+ await open('04-streaming');assert.equal(await text('[data-action=play]'),'❚❚');await click('play');await click('library');assert.equal(await page.locator('#song-rows tr').count(),120);await page.locator('#song-search').fill('Soft Departure');assert.equal(await page.locator('#song-rows tr').count(),10);await page.locator('#genre').selectOption('Ambient');assert((await text('#song-rows')).includes('No tracks'));await page.locator('#genre').selectOption('All genres');await click('menu:0');await click('options:0');await click('organize:0');await click('choose:0');await click('add:0');await click('playlists');assert((await text('#song-rows')).includes('Soft Departure'));
+ await open('05-travel');await page.locator('#stay-search button').click();assert.equal(await page.locator('.skeleton').count(),2);await page.waitForSelector('.hotel-card');await click('view');await page.locator('#location-filter').selectOption('Ghent');await click('apply');assert.equal(await page.locator('.hotel-card').count(),2);await click('hotel:1');await page.locator('#book-stay [name=end]').fill('2026-11-12');await page.locator('#book-stay button').click();assert((await text('#stay-error')).includes('after'));await page.locator('#book-stay [name=end]').fill('2026-11-15');assert((await text('#stay-total')).includes('€270.28'));await page.locator('#book-stay button').click();assert((await text('#travel')).includes('confirmed'));
+ await open('06-fitness');await click('start');await click('begin');await click('pause');assert((await text('#fitness')).includes('Take a breath'));await click('dismiss');await click('pause');for(let i=0;i<4;i++){if(await page.locator('#modal').evaluate(e=>e.open))await click('dismiss');await click('next');}assert((await text('#fitness')).includes('You did it'));await click('home');assert((await text('.fitness-grid')).includes('4'));
+ await open('07-cloud-storage');await click('signup:1');assert(await page.locator('#create-account').isDisabled());await page.locator('[name=name]').fill('Demo Person');await page.locator('[name=email]').fill('demo@example.test');await page.locator('[name=password]').fill('DemoPass8');assert(!(await page.locator('#create-account').isDisabled()));assert((await text('#password-rules')).includes('✓'));await page.locator('#create-account').click();assert((await text('#cloud')).includes('simulated Plus account'));
+ await open('08-food-ordering');assert.equal(await page.locator('.dish').count(),36);await click('dish:0');await page.locator('[name=size]').selectOption('3');await page.locator('[name=extra]').check();await page.locator('[name=quantity]').fill('2');await page.locator('[name=quantity]').dispatchEvent('input');assert.equal(await text('#dish-total'),'€26.00');await page.locator('#customize button').click();await click('cart');assert((await text('#food')).includes('€28.50'));await click('place');assert((await text('#food')).includes('Processing'));
+ await open('09-file-manager');await page.locator('#file-search').fill('Old proposal');assert.equal(await page.locator('#file-list tbody tr').count(),1);await click('delete:4');assert((await text('#file-list')).includes('No matching'));await page.locator('#file-search').fill('');await page.locator('#upload').setInputFiles({name:'demo-upload.txt',mimeType:'text/plain',buffer:Buffer.from('fictional test')});await waitText('#upload-state','Upload complete');assert((await text('#file-list')).includes('demo-upload.txt'));await click('folder:Documents');assert(!(await text('#file-list')).includes('Launch teaser'));
+ await open('10-learning-platform');await click('lesson:1');await click('complete');await click('complete');await page.locator('[name=answer][value="0"]').check();await page.locator('#quiz-form button').click();assert.equal(await text('#quiz-feedback'),'Wrong');await page.locator('[name=answer][value="1"]').check();await page.locator('#quiz-form button').click();await click('next-question');await page.locator('[name=answer][value="0"]').check();await page.locator('#quiz-form button').click();await click('next-question');await page.locator('[name=answer][value="1"]').check();await page.locator('#quiz-form button').click();await click('next-question');assert((await text('#learning')).includes('100% complete'));await page.locator('#restart').click();assert((await text('#learning')).includes('1 of 3 lessons completed'));
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(base);await noOverflow('collection mobile');await page.screenshot({path:path.join(root,'tests/screenshots/collection-mobile.png'),fullPage:true});
+ for(const link of links){await page.goto(base+link);await noOverflow(link+' mobile');await page.screenshot({path:path.join(root,'tests/screenshots/'+path.basename(link,'.html')+'-mobile.png'),fullPage:true});assert(await page.locator('#restart').isVisible());}
+ await page.goto(base+'scenarios/01-webshop.html');await click('detail:0');await noOverflow('mobile dialog');await page.keyboard.press('Escape');assert(!(await page.locator('#modal').evaluate(e=>e.open)));
+ assert.deepEqual(errors,[],'Browser JavaScript errors');assert.deepEqual(external,[],'External network requests');
+ console.log('PASS: 10 sites, core interactions, restart, mobile layouts, no JS errors or external requests.');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});

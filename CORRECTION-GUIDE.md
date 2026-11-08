@@ -1,6 +1,6 @@
 # UX Audit Lab — correction guide
 
-**Spoilers: this file contains the intended findings for all ten websites.** It is a study reference, separate from the website interface. Nothing in the sites loads or displays this guide.
+**Spoilers: this file contains the intended findings for the ten focused websites.** It is a study reference, separate from the website interface. Nothing in the sites loads or displays this guide.
 
 Based on the project handoff and the implemented scenarios. No student observations have been assessed yet; these are the expected discussion points, not a record of answers you have already given.
 
@@ -210,3 +210,8 @@ Evaluate the fictional product, while distinguishing its intended behavior from 
 The original handoff defines the intended scenario behaviors. This guide describes those behaviors as implemented, including their simulation limits. It is not an exhaustive audit or a claim that every design choice has one objectively correct interpretation.
 
 Conceptual references: [Laws of UX](https://lawsofux.com/) and [Nielsen's 10 usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/). These concepts overlap: a strong explanation may reasonably connect one observation to several principles.
+
+
+## 11 — Roamly
+
+The extended exercise has a separate tutor reference at `exam-internal/answer-key.md`. Follow the same progressive-hint rules in AGENTS.md.

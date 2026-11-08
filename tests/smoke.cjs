@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const root = path.resolve(__dirname,'..');
-const base = 'http://127.0.0.1:8000/';
+const base = process.env.BASE_URL || 'http://127.0.0.1:8000/';
 (async () => {
  const browser = await chromium.launch({channel:'chrome',headless:true});
  const context = await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
@@ -20,7 +20,7 @@ const base = 'http://127.0.0.1:8000/';
  const waitText = (s,value) => page.waitForFunction(([s,v])=>document.querySelector(s)?.textContent.includes(v),[s,value]);
  const noOverflow = async label => assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' overflows');
  await page.goto(base);
- assert.equal(await page.locator('.scenario-card').count(),10);
+ assert.equal(await page.locator('.scenario-card').count(),11);
  const links = await page.locator('.scenario-card').evaluateAll(a=>a.map(x=>x.getAttribute('href')));
  await fs.mkdir(path.join(root,'tests','screenshots'),{recursive:true});
  for(const link of links){const r=await page.goto(base+link);assert.equal(r.status(),200);assert(await page.locator('h1').count()>0);await noOverflow(link);await page.screenshot({path:path.join(root,'tests/screenshots/'+path.basename(link,'.html')+'-desktop.png'),fullPage:true});assert.equal(await page.getByRole('button',{name:/audit|observation|hint/i}).count(),0);}
@@ -45,6 +45,6 @@ const base = 'http://127.0.0.1:8000/';
  for(const link of links){await page.goto(base+link);await noOverflow(link+' mobile');await page.screenshot({path:path.join(root,'tests/screenshots/'+path.basename(link,'.html')+'-mobile.png'),fullPage:true});assert(await page.locator('#restart').isVisible());}
  await page.goto(base+'scenarios/01-webshop.html');await click('detail:0');await noOverflow('mobile dialog');await page.keyboard.press('Escape');assert(!(await page.locator('#modal').evaluate(e=>e.open)));
  assert.deepEqual(errors,[],'Browser JavaScript errors');assert.deepEqual(external,[],'External network requests');
- console.log('PASS: 10 sites, core interactions, restart, mobile layouts, no JS errors or external requests.');
+ console.log('PASS: 11 sites, core interactions, restart, mobile layouts, no JS errors or external requests.');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});

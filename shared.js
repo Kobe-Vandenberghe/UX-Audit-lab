@@ -9,7 +9,8 @@ const sites = [
  ['CloudBox','Storage & subscriptions','Compare plans and create a simulated account.','Advanced','cloudbox','07-cloud-storage','☁'],
  ['QuickBite','Good food, delivered','Customize a meal and place a simulated order.','Advanced','quickbite','08-food-ordering','◒'],
  ['FileFlow','Your digital workspace','Upload a document, locate an existing file, and delete an outdated file.','Advanced','fileflow','09-file-manager','▱'],
- ['LearnSpace','Learning & growth','Continue a course, complete a quiz, and review your progress.','Advanced','learnspace','10-learning-platform','✳']
+ ['LearnSpace','Learning & growth','Continue a course, complete a quiz, and review your progress.','Advanced','learnspace','10-learning-platform','✳'],
+ ['Roamly','European travel · Full application','Plan a European city break: compare stays, save favourites, make a reservation, and manage your travel plans.','Extended exam · 20 min','roamly','roamly/index','↗']
 ];
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -22,7 +23,7 @@ const button = (text, action, cls='') => {
 const field = (label,name,type='text',value='',extra='') => `<label>${label}<input name="${name}" type="${type}" value="${escapeHTML(value)}" ${extra}></label>`;
 function mountSite(index, markup) {
  const site=sites[index]; document.title=site[0]+' · UX Audit Lab'; document.body.className=site[4];
- $('#app').innerHTML=`<div class="lab-bar"><a href="../index.html">← The collection</a><span>${String(index+1).padStart(2,'0')} / 10 <span class="bar-divider">·</span> Local simulation</span><button id="restart" type="button">Restart site ↻</button></div><main id="site">${markup}</main><div id="toast" role="status" aria-live="polite" hidden></div><dialog id="modal"><div id="modal-content"></div><form method="dialog"><button class="dialog-close" aria-label="Close dialog">×</button></form></dialog>`;
+ $('#app').innerHTML=`<div class="lab-bar"><a href="../index.html">← The collection</a><span>${String(index+1).padStart(2,'0')} / ${sites.length} <span class="bar-divider">·</span> Local simulation</span><button id="restart" type="button">Restart site ↻</button></div><main id="site">${markup}</main><div id="toast" role="status" aria-live="polite" hidden></div><dialog id="modal"><div id="modal-content"></div><form method="dialog"><button class="dialog-close" aria-label="Close dialog">×</button></form></dialog>`;
  $('#restart').onclick=()=>location.reload();
  $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')) $('#modal').close();});
 }

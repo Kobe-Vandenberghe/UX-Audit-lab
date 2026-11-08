@@ -1,2 +1,6 @@
 node_modules/
 tests/screenshots/
+node_modules/
+*.tsbuildinfo
+tests/.tmp/
+tests/*-error.log

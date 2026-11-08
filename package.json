@@ -1,0 +1,11 @@
+{
+  "name": "ux-audit-lab",
+  "private": true,
+  "workspaces": ["roamly"],
+  "scripts": {
+    "dev": "node server.cjs",
+    "build": "npm run build --workspace roamly",
+    "test": "node tests/smoke.cjs && node tests/roamly.cjs"
+  },
+  "devDependencies": { "playwright": "^1.56.0" }
+}

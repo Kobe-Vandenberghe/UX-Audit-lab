@@ -1,27 +1,47 @@
 # UX Audit Lab
 
-Ten fictional, interactive websites for studying usability through exploration. The websites deliberately mix good, poor, and context-dependent design decisions. There are no observation forms, audit panels, hints, scores, or feedback reports. Share your observations in chat when you want to discuss them.
+Eleven fictional, interactive websites: ten focused scenarios and **Roamly**, an extended European travel application. Pick a website and follow its neutral task. Discuss your observations in chat when you want a review.
 
-`AGENTS.md` guides the agent's tutoring: review your findings, correct reasoning, and offer gradual hints for undiscovered points without revealing the full correction paper unless you ask.
-
-Start a local server from this folder:
+## Start
 
 ```powershell
 node server.cjs
 ```
 
-Open http://127.0.0.1:8000 in a browser. Keep the terminal running; Ctrl+C stops the server. Alternatively, use VS Code Live Server or `python -m http.server 8000 --bind 127.0.0.1`. Choose a site and follow the neutral task on its launch card. Use **The collection** to return and **Restart site** to restore that site's initial state. Each site also has its own address under `scenarios/`.
+Open **http://127.0.0.1:8000**. Keep the terminal running; Ctrl+C stops the server. The built app is included: no installation, internet, build or external service is needed to run the collection. Use the supplied Node server, which also excludes internal exercise files from the served website. For another port: `$env:PORT='8001'; node server.cjs`.
 
-All payments, transfers, bookings, playback, orders, and accounts are simulated. Use fictional form details. FileFlow reads only a selected file's name and size; it does not read or transmit its contents. Passwords are used for in-memory validation only. No backend, dependencies, build step, external fonts, assets, or API requests are required. Browser refresh resets the website state; there is no learning-progress tracking.
+Roamly has the larger card at the end of the collection. Direct address: **http://127.0.0.1:8000/scenarios/roamly/index.html**.
 
-The music player simulates playback visually; it does not produce audio. Illustrations are embedded SVGs. File previews use sample content. Fixed sample dates and records keep the exercises repeatable.
+Test account: `demo@roamly.example` / `Roamly2026!`. It includes sample reservations and favourites. You can also register a fictional account or book as a guest. Allow roughly 20 minutes for an initial exploration.
 
-The launch page, shared controls, dialogs, responsive styles, and site interactions support keyboard use. Individual sites intentionally include the interaction choices specified in the handoff; don't assume every unusual behavior is unfinished.
+## Simulation boundaries
 
-`shared.js` contains the site directory, small UI helpers, and the simulation shell. `styles.css` styles the collection and shared elements. `scenarios.css` contains the individual visual identities. Each scenario has its own HTML entry point and JavaScript file in `scenarios/`. To add another site, add a directory entry in `shared.js`, an HTML entry point, and a site script that calls `mountSite`.
+All payments, transfers, bookings, orders, support messages and accounts are fictional. Use fictional details. FileFlow reads only selected file names and sizes; music playback is visual and silent; file previews use sample content. No real email, authentication or payment service is connected.
 
-References: [Laws of UX](https://lawsofux.com/) and [Nielsen's 10 usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/).
+The original ten sites keep state in memory and reset on refresh. Roamly stores local accounts, password digests, profile details, preferences, favourites and reservations in browser localStorage. Checkout drafts stay in memory; card details are never stored. Guest favourites and reservations attach to the account when you register or log in using the same browser. Password recovery uses a simulated local message. Roamly's Restart site asks before removing its browser data; smaller sites restart immediately. Travel dates and sample records are fixed for repeatable practice.
 
-**Spoilers:** [CORRECTION-GUIDE.md](CORRECTION-GUIDE.md) is the separate correction paper for all ten scenarios, with expected findings, reasoning, improvements, and discussion notes. Read it after exploring. The websites do not load or display it.
+All runtime assets are local. Smaller sites use embedded SVG illustrations; Roamly includes local photography. There is no audit UI or learning-progress tracking. AGENTS.md guides chat-based tutoring. The correction guide is a separate study reference; explore before reading it.
 
-Verification: with the server running, `node tests/smoke.cjs` runs browser interaction checks when Playwright and Google Chrome are available. If needed, install only the test tool with `npm install --no-save playwright`; the websites themselves need no packages. The suite checks the ten pages, representative user flows, local-only behavior, and mobile overflow, and saves screenshots under `tests/screenshots/`. Firefox, Safari, screen-reader behavior, and physical mobile devices have not been tested. Test assertions contain implementation details; explore the sites before reading them if you want to avoid spoilers.
+## Editing Roamly
+
+React, TypeScript, React Router, Tailwind CSS and Lucide source is in `roamly/src/`. From this folder:
+
+```powershell
+npm install
+npm run build
+```
+
+Build output is `scenarios/roamly/`. Commit it with source changes to preserve zero-install startup. For hot reload: `npm run dev --workspace roamly`, then http://127.0.0.1:5173. The return-to-collection link requires the collection server. Hash routing supports direct links and refresh without rewrite rules.
+
+The original scenarios use `shared.js`, `styles.css`, `scenarios.css` and individual HTML/scripts in `scenarios/`. The site directory in shared.js feeds dashboard.js.
+
+## Verification
+
+With dependencies installed and the collection server running:
+
+```powershell
+npm test
+npm run test --workspace roamly
+```
+
+Browser checks use Playwright and installed Google Chrome, exercise both the original sites and Roamly, and save screenshots under `tests/screenshots/`. For another server port: `$env:BASE_URL='http://127.0.0.1:8001/'`. Checks use isolated contexts and fictional data. Tests contain implementation details, so explore before reading them. Firefox, Safari, screen readers and physical mobile devices have not been tested.

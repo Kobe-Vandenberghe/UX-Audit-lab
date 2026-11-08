@@ -1,0 +1,64 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const base=process.env.BASE_URL||'http://127.0.0.1:8000/';
+const app=base+'scenarios/roamly/index.html#';
+const shots=path.join(__dirname,'screenshots');
+(async()=>{
+ const browser=await chromium.launch({channel:'chrome',headless:true});
+ try{
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ const page=await context.newPage();const errors=[];const external=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(!r.url().startsWith(base))external.push(r.url());});
+ const go=async route=>{await page.goto(app+route);await page.locator('.header').waitFor();};
+ const noOverflow=async label=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' overflow');
+ const button=name=>page.getByRole('button',{name,exact:true});
+ await fs.mkdir(shots,{recursive:true});
+ await page.goto(base);assert.equal(await page.locator('.scenario-card').count(),11);await page.getByRole('link',{name:/Roamly/}).click();
+ await page.getByRole('heading',{name:/Find a little/}).waitFor();await page.waitForTimeout(2400);
+ assert.equal(await page.locator('img').evaluateAll(img=>img.filter(i=>!i.complete||i.naturalWidth===0).length),0);
+ await page.screenshot({path:path.join(shots,'roamly-home-desktop.png'),fullPage:true});await noOverflow('home desktop');
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Lisbon');
+ await button('Find my stay').click();await page.locator('.list-card').first().waitFor();assert.equal(await page.locator('.list-card').count(),4);
+ await page.getByRole('checkbox',{name:/^Apartment/}).check();await button('Apply filters').click();await page.waitForTimeout(850);assert.equal(await page.locator('.list-card').count(),1);
+ await button('Reset all').click();assert.equal(await page.locator('.list-card').count(),4);
+ await page.getByRole('combobox',{name:'Sort by'}).selectOption('price-low');
+ assert.match(await page.locator('.list-card h3').first().innerText(),/Tramline/);
+ await page.locator('.list-card .save-btn').first().click();
+ await go('/account/favourites');assert.equal(await page.locator('.stay-card').count(),1);
+ await go('/register');await page.getByLabel('Your name',{exact:true}).fill('Taylor Example');await page.getByLabel('Email address',{exact:true}).fill('taylor@example.test');await page.getByLabel('Password',{exact:true}).fill('Travel2026!');await button('Show password').click();assert.equal(await page.locator('input[name=password]').getAttribute('type'),'text');await button('Create your account').click();await page.getByRole('heading',{name:'Hello, Taylor.'}).waitFor();
+ await go('/account/favourites');assert.equal(await page.locator('.stay-card').count(),1);
+ await go('/account/profile');await page.getByLabel('Full name').fill('Taylor Traveller');await page.getByLabel('Phone number').fill('+32 470 123 456');await button('Update details').click();await page.waitForTimeout(1000);await page.reload();await page.getByLabel('Full name').waitFor();assert.equal(await page.getByLabel('Full name').inputValue(),'Taylor Traveller');
+ await go('/account/preferences');await page.locator('[role=switch]').first().click();await button('Save preferences').click();await page.waitForTimeout(1250);await page.reload();await page.locator('[role=switch]').first().waitFor();assert.equal(await page.locator('[role=switch]').first().getAttribute('aria-checked'),'false');
+ await go('/stay/stay-1');await button('Reviews').click();assert.match(page.url(),/stay\/stay-1/);await page.locator('.gallery-main').click();await page.locator('.gallery-dismiss').click();
+ await page.screenshot({path:path.join(shots,'roamly-property-desktop.png'),fullPage:true});
+ await button('Reserve your little escape').click();await button('Continue').click();await page.getByPlaceholder('First name *',{exact:true}).fill('Taylor');await page.getByPlaceholder('Last name *',{exact:true}).fill('Traveller');await page.getByPlaceholder('Email address *',{exact:true}).fill('taylor@example.test');await page.getByPlaceholder('Phone number *',{exact:true}).fill('0470123456');await button('Save & continue').click();await page.getByText('Make yourself at home.',{exact:true}).waitFor();await page.locator('.extra-option').first().locator('input').check();await button('Continue to payment').click();await page.getByText("You're almost somewhere.",{exact:true}).waitFor();
+ await page.screenshot({path:path.join(shots,'roamly-checkout-desktop.png'),fullPage:true});
+ const total=await page.locator('.total-line strong').innerText();assert.equal(total,'€568.13');
+ await page.getByLabel('Name on card',{exact:true}).fill('Taylor Traveller');await page.getByLabel('Card number',{exact:true}).fill('4242 4242 4242 4242');await page.getByLabel('Expiry date',{exact:true}).fill('12/28');await page.getByLabel('Security code',{exact:true}).fill('123');await page.locator('.terms-check input').check();await button('Confirm reservation').dblclick();await page.getByRole('heading',{name:'See you somewhere lovely.'}).waitFor();
+ await page.reload();await page.getByRole('heading',{name:'See you somewhere lovely.'}).waitFor();assert((await page.locator('.confirmation-card').innerText()).includes(total));
+ const saved=await page.evaluate(()=>JSON.stringify(localStorage));assert(!saved.includes('4242 4242'));assert(!saved.includes('Travel2026!'));
+ await go('/account');assert.equal(await page.locator('.reservation').count(),1);await button('Manage reservation').click();await button('Cancel reservation').click();await page.getByText('Cancelled',{exact:true}).waitFor();await page.reload();await page.getByText('Cancelled',{exact:true}).waitFor();
+ await go('/support');await page.locator('.faq-list summary').first().click();assert(await page.locator('.faq-list details').first().getAttribute('open')!==null);
+ await page.getByLabel('Your name',{exact:true}).fill('Taylor Traveller');await page.getByLabel('Email address',{exact:true}).fill('taylor@example.test');await page.getByLabel('Your message',{exact:true}).fill('Please help me review my simulated reservation dates.');await button('Send your note').click();await page.getByText('Your note has a little home.',{exact:true}).waitFor();
+ await go('/account');await button('Log out').click();await go('/forgot');await page.getByLabel('Email address',{exact:true}).fill('taylor@example.test');await button('Send recovery instructions').click();await button('Open local recovery message').click();await page.getByLabel('Recovery code').fill('628401');await page.getByLabel('New password').fill('Updated2026!');await button('Set new password').click();await page.getByText('A fresh little start.').waitFor();
+ await go('/login');await page.getByLabel('Email address',{exact:true}).fill('taylor@example.test');await page.getByLabel('Password',{exact:true}).fill('Updated2026!');await button('Log in').click();await page.getByRole('heading',{name:'Hello, Taylor.'}).waitFor();
+ await button('Log out').click();await go('/login');await page.getByLabel('Email address',{exact:true}).fill('demo@roamly.example');await page.getByLabel('Password',{exact:true}).fill('Roamly2026!');await button('Log in').click();await page.getByRole('heading',{name:'Hello, Alex.'}).waitFor();assert.equal(await page.locator('.reservation').count(),1);await button('Previous stays').click();assert.equal(await page.locator('.reservation').count(),1);
+ for(const route of ['/inspiration','/info/privacy','/info/terms','/stay/not-found','/missing']){await go(route);assert(await page.locator('h1').count()>0);}
+ await page.setViewportSize({width:390,height:844});
+ for(const route of ['/','/search','/stay/stay-1','/book/stay-1','/login','/register','/forgot','/account','/account/favourites','/account/preferences','/support','/inspiration']){await go(route);if(route==='/search')await page.locator('.list-card').first().waitFor();await noOverflow(route+' mobile');}
+ await go('/search');await button('Filters').click();await page.getByRole('checkbox',{name:/^Apartment/}).check();await button('Apply filters').click();await page.locator('.list-card').first().waitFor();assert.equal(await page.locator('.list-card').count(),6);
+ await go('/');await page.waitForTimeout(2400);await page.screenshot({path:path.join(shots,'roamly-home-mobile.png'),fullPage:true});
+ for(const hidden of ['exam-internal/answer-key.md','exam-internal%5canswer-key.md','node_modules/react/package.json'])assert.equal((await page.request.get(base+hidden)).status(),404);
+ page.once('dialog',d=>d.accept());await button('Restart site ↻').click();await page.getByRole('heading',{name:/Find a little/}).waitFor();await page.getByRole('link',{name:'Log in',exact:true}).waitFor();
+ await go('/account');assert.equal(await page.locator('.reservation').count(),0);
+ await go('/book/stay-2');await button('Continue').click();await page.getByPlaceholder('First name *',{exact:true}).fill('Guest');await page.getByPlaceholder('Last name *',{exact:true}).fill('Traveller');await page.getByPlaceholder('Email address *',{exact:true}).fill('guest@example.test');await page.getByPlaceholder('Phone number *',{exact:true}).fill('0470123456');await button('Save & continue').click();await button('Continue to payment').click();await page.getByLabel('Name on card',{exact:true}).fill('Guest Traveller');await page.getByLabel('Card number',{exact:true}).fill('4242 4242 4242 4242');await page.getByLabel('Expiry date',{exact:true}).fill('12/28');await page.getByLabel('Security code',{exact:true}).fill('123');await page.locator('.terms-check input').check();await button('Confirm reservation').click();await page.getByRole('heading',{name:'See you somewhere lovely.'}).waitFor();
+ await go('/account');assert.equal(await page.locator('.reservation').count(),1);await page.reload();await page.locator('.reservation').waitFor();
+ await go('/register');await page.getByLabel('Your name',{exact:true}).fill('Guest Traveller');await page.getByLabel('Email address',{exact:true}).fill('guest@example.test');await page.getByLabel('Password',{exact:true}).fill('Guest2026!');await button('Create your account').click();await page.getByRole('heading',{name:'Hello, Guest.'}).waitFor();assert.equal(await page.locator('.reservation').count(),1);
+ assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+ console.log('PASS: Roamly journeys, persistence, recovery, pricing, mobile layouts, local assets and protected files.');
+ await context.close();
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});
